@@ -1,0 +1,47 @@
+name: CI/CD Pipeline with Docker and Discord Notification
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord on Start
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\": \"🚀 Build started for ${{ github.repository }} on branch ${{ github.ref_name }}\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build Docker image
+        run: docker build . -t yourusername/yourapp:${{ github.sha }}
+
+      - name: Push Docker image
+        run: docker push yourusername/yourapp:${{ github.sha }}
+
+  notify-end:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord on Success
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\": \"✅ Build finished for ${{ github.repository }}. Docker image ${{ github.sha }} is ready.\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Notify Discord on Failure
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\": \"❌ Build failed for ${{ github.repository }}.\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
